@@ -12,7 +12,7 @@ from telethon import TelegramClient, events, functions
 from telethon.tl.functions.account import UpdateProfileRequest
 
 # ---------------- CONFIG (your real values) ----------------
-BOT_TOKEN = "8388938837:AAFLBd4BHMUnbwelsqcXbsjtuz6t7-nTZoc"
+BOT_TOKEN = "8273485316:AAHsQF5uzuccwiFFXTOp411AlElqH-4yubE"
 API_ID = 24945402
 API_HASH = "6118e50f5dc4e3a955e50b22cf673ae2"
 
@@ -252,16 +252,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Force-join gate
     if not await user_is_member(context.bot, user_id, FORCE_CHANNEL) or not await user_is_member(context.bot, user_id, FORCE_GROUP):
         keyboard = [[InlineKeyboardButton("✅ I have read and joined", callback_data="joined")]]
-        text = (
-            f"""✨ *Welcome to Cosmic Ads Bot* ✨
-
-Please read our Privacy Policy:
-{PRIVACY_LINK}
-
-Before continuing, please join:
-{FORCE_CHANNEL}
-{FORCE_GROUP}"""
-        )
+        spacer = "\u200b\u200b\u200b"
+text = (
+    f"✨ *Welcome to Cosmic Ads Bot* ✨{spacer}\n\n"
+    f"Please read our Privacy Policy:\n{PRIVACY_LINK}{spacer}\n\n"
+    f"Before continuing, please join:\n{FORCE_CHANNEL}\n{FORCE_GROUP}"
+)
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
         return
 
