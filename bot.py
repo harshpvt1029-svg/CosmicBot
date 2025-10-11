@@ -318,7 +318,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=build_back_keyboard()
         )
         return
-    if data == "set_ad_intervals":
+if data == "set_ad_intervals":
         keyboard = [
             [InlineKeyboardButton("2 minutes", callback_data="adint_2")],
             [InlineKeyboardButton("5 minutes", callback_data="adint_5")],
@@ -388,86 +388,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Logged out.", reply_markup=build_main_keyboard(user_id))
         return
 
-    if data == "premium":
-        if is_premium(user_id):
-            keyboard = [
-                [InlineKeyboardButton("Set Reply Interval", callback_data="set_reply_intervals")],
-                [InlineKeyboardButton("⬅️ Back to Dashboard", callback_data="back_to_dashboard")],
-            ]
-            await query.edit_message_text(
-                "🌟 Premium active.\n\nUse *Auto Reply* on the dashboard.\nYou can also set its interval:",
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-        else:
-            await query.edit_message_text(
-                f"🌟 *Premium Benefits:*\n\n"
-                f"✔ Auto-Reply access (groups only)\n"
-                f"✔ Separate reply interval\n"
-                f"✔ No bio/name enforcement\n\n"
-                f"💵 Cost: {PREMIUM_PRICE_TEXT}\n"
-                f"To buy: @LordHarsH",
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=build_back_keyboard()
-            )
-        return
-
-    if data == "auto_reply":
-        if not is_premium(user_id):
-            await query.edit_message_text(
-                "❌ Auto-Reply is Premium only.\nBuy from *Premium* menu.",
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=build_back_keyboard()
-            )
-            return
-
-        kws = list(auto_reply_keywords.get(user_id, {}).keys())
-        if kws:
-            lines = [f"• {k} — /off_{k}" for k in kws]
-            msg = "💬 *Active auto-replies:*\n" + "\n".join(lines)
-        else:
-            msg = "No auto-reply is currently running."
-
-        msg += "\n\nSet new:\n`/set_auto_reply <keyword> <reply>`"
-        keyboard = [
-            [InlineKeyboardButton("Set Reply Interval", callback_data="set_reply_intervals")],
-            [InlineKeyboardButton("⬅️ Back to Dashboard", callback_data="back_to_dashboard")],
-        ]
-        await query.edit_message_text(msg, parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup(keyboard))
-        return
-
-    if data == "set_reply_intervals":
-        if not is_premium(user_id):
-            await query.edit_message_text("❌ Auto-Reply interval is Premium only.", reply_markup=build_back_keyboard())
-            return
-        keyboard = [
-            [InlineKeyboardButton("2 minutes", callback_data="rpint_2")],
-            [InlineKeyboardButton("5 minutes", callback_data="rpint_5")],
-            [InlineKeyboardButton("10 minutes", callback_data="rpint_10")],
-            [InlineKeyboardButton("15 minutes", callback_data="rpint_15")],
-            [InlineKeyboardButton("⬅️ Back to Dashboard", callback_data="back_to_dashboard")],
-        ]
-        await query.edit_message_text("Choose *Reply* interval:", parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup(keyboard))
-        return
-
-    if data.startswith("rpint_"):
-        if not is_premium(user_id):
-            await query.edit_message_text("❌ Auto-Reply interval is Premium only.", reply_markup=build_back_keyboard())
-            return
-        try:
-            minutes = int(data.split("_")[1])
-        except Exception:
-            minutes = 5
-        user_reply_interval[user_id] = minutes
-        await query.edit_message_text(
-            f"⏲️ Reply interval set to *{minutes} min*.",
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=build_main_keyboard(user_id)
-        )
-        await ensure_autoreply_handlers(user_id)
-        return
-
-# ======================= MESSAGE HANDLERS =======================
+# ======================= MESSAGE HANDLER =======================
 async def capture_add_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in pending_add_message:
@@ -482,112 +403,16 @@ async def capture_add_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     preview = "(with photo)" if photo_id else "(text only)"
     await update.message.reply_text(f"✅ Message saved {preview}.", reply_markup=build_main_keyboard(user_id))
 
-# ======================= COMMANDS =======================
-async def set_auto_reply_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if not is_premium(user_id):
-        await update.message.reply_text("❌ Auto-Reply is Premium only. Buy from *Premium* menu.", parse_mode=ParseMode.MARKDOWN)
-        return
-    args = context.args
-    if len(args) < 2:
-        await update.message.reply_text("Usage: /set_auto_reply <keyword> <reply>")
-        return
-    keyword = args[0].lower()
-    reply = " ".join(args[1:])
-    auto_reply_keywords.setdefault(user_id, {})[keyword] = reply
-    await update.message.reply_text(f"✅ Auto-reply set for '{keyword}'.")
-    await ensure_autoreply_handlers(user_id)
-
-async def off_keyword_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if not is_premium(user_id):
-        return
-    text = update.message.text or ""
-    if not text.startswith("/off_"):
-        return
-    keyword = text[5:].strip().lower()
-    user_map = auto_reply_keywords.get(user_id, {})
-    if keyword in user_map:
-        del user_map[keyword]
-        await update.message.reply_text(f"🛑 Auto-reply for '{keyword}' turned OFF.")
-    else:
-        await update.message.reply_text(f"No running auto-reply found for '{keyword}'.")
-
-# ---- Admin: approve / unapprove premium ----
-async def approve_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ADMIN_IDS:
-        await update.message.reply_text("❌ Not authorized.")
-        return
-    if len(context.args) != 1:
-        await update.message.reply_text("Usage: /approve <user_id>")
-        return
-    try:
-        approved_user = int(context.args[0])
-    except Exception:
-        await update.message.reply_text("Invalid user ID.")
-        return
-    user_premium_expiry[approved_user] = datetime.now() + timedelta(days=30)
-    await update.message.reply_text(f"✅ User {approved_user} Premium for 30 days.")
-    try:
-        await context.bot.send_message(approved_user, "🎉 Premium activated (30 days)! 🚀")
-    except Exception:
-        pass
-
-async def unapprove_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ADMIN_IDS:
-        await update.message.reply_text("❌ Not authorized.")
-        return
-    if len(context.args) != 1:
-        await update.message.reply_text("Usage: /unapprove <user_id>")
-        return
-    try:
-        target_user = int(context.args[0])
-    except Exception:
-        await update.message.reply_text("Invalid user ID.")
-        return
-    if target_user in user_premium_expiry:
-        user_premium_expiry.pop(target_user, None)
-        await update.message.reply_text(f"✅ User {target_user} Premium removed.")
-        try:
-            await context.bot.send_message(target_user, "⚠️ Your Premium has been revoked by admin.")
-        except Exception:
-            pass
-    else:
-        await update.message.reply_text("⚠️ This user is not Premium.")
-
-# ---- Admin: broadcast ----
-async def broadcast_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ADMIN_IDS:
-        await update.message.reply_text("❌ Not authorized.")
-        return
-    if not context.args:
-        await update.message.reply_text("Usage: /broadcast <message>")
-        return
-    msg = " ".join(context.args)
-    targets = set(known_users)
-    sent, failed = 0, 0
-    for uid in targets:
-        try:
-            await context.bot.send_message(uid, f"📢 {msg}")
-            sent += 1
-            await asyncio.sleep(0.2)
-        except Exception as e:
-            failed += 1
-            logger.error(f"[Broadcast] failed uid={uid} err={e}")
-    await update.message.reply_text(f"✅ Broadcast complete.\nSent: {sent}\nFailed: {failed}")
-
 # ======================= MAIN =======================
 def main():
     application = Application.builder().token(BOT_TOKEN).build()
+
+    # Register handlers
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("set_auto_reply", set_auto_reply_cmd))
-    application.add_handler(CommandHandler("approve", approve_cmd))
-    application.add_handler(CommandHandler("unapprove", unapprove_cmd))
-    application.add_handler(CommandHandler("broadcast", broadcast_cmd))
-    application.add_handler(MessageHandler(filters.Regex(r"^/off_.+"), off_keyword_cmd))
     application.add_handler(MessageHandler((filters.TEXT | filters.PHOTO) & ~filters.COMMAND, capture_add_message))
     application.add_handler(CallbackQueryHandler(button_handler))
-    logger.info("Main Bot is running…")
+
+    logging.info("Main Bot is running…")
     application.run_polling()
 
 if __name__ == "__main__":
