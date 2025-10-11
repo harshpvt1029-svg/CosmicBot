@@ -241,8 +241,8 @@ async def ensure_autoreply_handlers(user_id: int):
     asyncio.create_task(client.run_until_disconnected())
 
 # ======================= /start =======================
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
+    async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id  # This should be indented by 4 spaces
     known_users.add(user_id)
     if not await user_is_member(context.bot, user_id, FORCE_CHANNEL) or not await user_is_member(context.bot, user_id, FORCE_GROUP):
         keyboard = [[InlineKeyboardButton("✅ I have read and joined", callback_data="joined")]]
