@@ -331,7 +331,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data.startswith("adint_"):
         try:
-            minutes = int(data.split("_")[1])
+            minutes = int(data.split("_")
+ [1])
         except Exception:
             minutes = 5
         user_ad_interval[user_id] = minutes
