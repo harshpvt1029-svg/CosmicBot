@@ -241,7 +241,7 @@ async def ensure_autoreply_handlers(user_id: int):
     asyncio.create_task(client.run_until_disconnected())
 
 # ======================= /start =======================
-    async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id  # This should be indented by 4 spaces
     known_users.add(user_id)
     if not await user_is_member(context.bot, user_id, FORCE_CHANNEL) or not await user_is_member(context.bot, user_id, FORCE_GROUP):
@@ -255,6 +255,7 @@ async def ensure_autoreply_handlers(user_id: int):
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
         return
     await update.message.reply_text("Welcome to your dashboard:", reply_markup=build_main_keyboard(user_id))
+
 # ======================= BUTTON HANDLER =======================
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -405,10 +406,8 @@ async def capture_add_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 # ======================= COMMANDS =======================
 async def set_auto_reply_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    async def set_auto_reply_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
     if not is_premium(user_id):
-        await update.message.reply_text(" ❌ Auto-Reply is Premium only. Buy from *Premium* menu.", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text("❌ Auto-Reply is Premium only. Buy from *Premium* menu.", parse_mode=ParseMode.MARKDOWN)
         return
     args = context.args
     if len(args) < 2:
