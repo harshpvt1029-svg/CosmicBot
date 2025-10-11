@@ -255,7 +255,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
         return
     await update.message.reply_text("Welcome to your dashboard:", reply_markup=build_main_keyboard(user_id))
-
 # ======================= BUTTON HANDLER =======================
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
