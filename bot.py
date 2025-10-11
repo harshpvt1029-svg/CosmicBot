@@ -25,7 +25,6 @@ PRIVACY_LINK = "https://gist.github.com/harshpvt1029-svg/504fba01171ef14c81f9f71
 ADMIN_IDS: Set[int] = {7769531937, 7609459487, 8463150711}
 WATERMARK = " - Via @CosmicAdsBot"
 PREMIUM_PRICE_TEXT = "299₹ / month"
-
 # ======================= LOGGING =======================
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -49,7 +48,6 @@ telethon_clients: Dict[int, TelegramClient] = {}
 user_logs: Dict[int, list] = {}
 pending_add_message: Set[int] = set()
 group_fetch_lock = asyncio.Lock()
-
 # ======================= HELPERS =======================
 def session_name(user_id: int) -> str:
     os.makedirs("sessions", exist_ok=True)
@@ -92,8 +90,7 @@ def _log(user_id: int, kind: str, chat_id: int, detail: str, status: str):
     if len(arr) > 300:
         del arr[:-300]
     logger.info(f"[LOG] user={user_id} kind={kind} chat={chat_id} detail='{detail}' status={status}")
-
-# ======================= WATERMARK / BIO ENFORCER =======================
+    # ======================= WATERMARK / BIO ENFORCER =======================
 async def enforce_promo_profile(user_id: int, client: TelegramClient):
     try:
         me = await client.get_me()
@@ -129,8 +126,7 @@ async def profile_watchdog(user_id: int, client: TelegramClient):
         except Exception as e:
             logger.error(f"[ProfileWatchdog] {e}")
         await asyncio.sleep(300)
-
-# ======================= TELETHON CLIENT BOOT =======================
+        # ======================= TELETHON CLIENT BOOT =======================
 async def ensure_telethon(user_id: int) -> Optional[TelegramClient]:
     cli = telethon_clients.get(user_id)
     if cli:
@@ -239,8 +235,7 @@ async def ensure_autoreply_handlers(user_id: int):
         except Exception as e:
             logger.error(f"[AutoReply Handler] user={user_id} error={e}")
     asyncio.create_task(client.run_until_disconnected())
-
-# ======================= /start =======================
+    # ======================= /start =======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     known_users.add(user_id)
@@ -318,91 +313,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=build_back_keyboard()
         )
         return
-        if data == "set_ad_intervals":
-        keyboard = [
-            [InlineKeyboardButton("2 minutes", callback_data="adint_2")],
-            [InlineKeyboardButton("5 minutes", callback_data="adint_5")],
-            [InlineKeyboardButton("10 minutes", callback_data="adint_10")],
-            [InlineKeyboardButton("15 minutes", callback_data="adint_15")],
-            [InlineKeyboardButton("⬅️ Back to Dashboard", callback_data="back_to_dashboard")],
-        ]
-        await query.edit_message_text("Choose *Ad* interval:", parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup(keyboard))
-        return
-
-    if data.startswith("adint_"):
-        try:
-            minutes = int(data.split("_")
- [1])
-        except Exception:
-            minutes = 5
-        user_ad_interval[user_id] = minutes
-        await query.edit_message_text(f"⏲️ Ad interval set to *{minutes} min*.", parse_mode=ParseMode.MARKDOWN, reply_markup=build_main_keyboard(user_id))
-        return
-
-    if data == "toggle_ads":
-        if user_id in ads_running:
-            ads_running.remove(user_id)
-            await query.edit_message_text("✅ Auto-ads stopped.", reply_markup=build_main_keyboard(user_id))
-        else:
-            ad = user_ad_message.get(user_id)
-            if not ad or not (ad.get("text") or ad.get("photo")):
-                await query.edit_message_text("❌ No message set. Tap *Add Message* first.", parse_mode=ParseMode.MARKDOWN, reply_markup=build_main_keyboard(user_id))
-                return
-            ads_running.add(user_id)
-            asyncio.create_task(auto_ads_loop(user_id))
-            await query.edit_message_text("🚀 Auto-ads started (groups only)", reply_markup=build_main_keyboard(user_id))
-        return
-
-    if data == "logs":
-        logs = user_logs.get(user_id, [])
-        if not logs:
-            await query.edit_message_text("No logs yet.", reply_markup=build_back_keyboard())
-        else:
-            view = logs[-30:]
-            lines = [f"{ts} | {kind} | chat:{cid} | {detail} | {st}" for (ts, kind, cid, detail, st) in view]
-            msg = "📜 *Recent Logs* (latest 30)\n" + "\n".join(lines)
-            if len(msg) > 3800:
-                with open("logs.txt", "w", encoding="utf-8") as f:
-                    f.write("\n".join(lines))
-                await query.edit_message_text("Logs are long; sending as file…", reply_markup=build_back_keyboard())
-                await context.bot.send_document(user_id, InputFile("logs.txt"))
-                os.remove("logs.txt")
-            else:
-                await query.edit_message_text(msg, parse_mode=ParseMode.MARKDOWN, reply_markup=build_back_keyboard())
-        return
-
-    if data == "logout":
-        path = session_name(user_id) + ".session"
-        if os.path.exists(path):
-            try:
-                os.remove(path)
-            except OSError:
-                pass
-        user_sessions.pop(user_id, None)
-        client = telethon_clients.pop(user_id, None)
-        if client:
-            try:
-                await client.disconnect()
-            except Exception:
-                pass
-        ads_running.discard(user_id)
-        await query.edit_message_text("Logged out.", reply_markup=build_main_keyboard(user_id))
-        return
-
-# ======================= MESSAGE HANDLER =======================
-async def capture_add_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if user_id not in pending_add_message:
-        return
-    text = update.message.caption if update.message.photo else update.message.text
-    text = text or ""
-    photo_id = None
-    if update.message.photo:
-        photo_id = update.message.photo[-1].file_id
-    user_ad_message[user_id] = {"text": text, "photo": photo_id}
-    pending_add_message.discard(user_id)
-    preview = "(with photo)" if photo_id else "(text only)"
-    await update.message.reply_text(f"✅ Message saved {preview}.", reply_markup=build_main_keyboard(user_id))
 
 # ======================= MAIN =======================
 def main():
@@ -418,3 +328,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
