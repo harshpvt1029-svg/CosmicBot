@@ -67,21 +67,34 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     phone = update.message.text.strip()
+
+    # Validate phone number format
+    if not phone.startswith("+"):
+        await update.message.reply_text("❌ Invalid phone number format. Ensure it starts with + followed by country code (e.g., +1234567890).")
+        return ConversationHandler.END
+
     user_phones[uid] = phone
     client = TelegramClient(get_session_name(uid), API_ID, API_HASH)
 
     try:
+        # Connect the client to the session
         await client.connect()
+        print(f"Connected to Telegram client for user {uid}.")
+
+        # Send the OTP request
         await client.send_code_request(phone)
+        print(f"OTP request sent for {phone}.")
+
         user_clients[uid] = client
         user_otps[uid] = ""
 
         text, keyboard = otp_keyboard("")
-        await update.message.reply_text("✅ OTP sent successfully!")
-        await update.message.reply_markdown_v2(text, reply_markup=keyboard)
+        # Use reply_markup to send only the inline keyboard and avoid the default system keyboard
+        await update.message.reply_text("✅ OTP sent successfully!", reply_markup=keyboard, disable_notification=True)
         return ASK_OTP
 
     except Exception as e:
+        print(f"Error sending OTP: {e}")
         await update.message.reply_text(f"❌ Failed to send OTP: {e}")
         return ConversationHandler.END
 
